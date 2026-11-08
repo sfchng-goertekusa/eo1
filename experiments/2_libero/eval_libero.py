@@ -31,15 +31,21 @@ class Args:
     post_process_action: bool = True
     job_name: str = "test"
     debug: bool = False
+    task_start: int = 0  # evaluate tasks [task_start, task_end) of the suite, so several clients can share one
+    task_end: int = -1  # -1 = up to the last task
+    out_dir: str = ""  # if set: log, videos and results.json go here instead of a dated folder under logs/
 
 
 def eval_libero(args: Args) -> None:
-    date_base = Path("experiments/2_libero/logs", dt.datetime.now().strftime("%Y-%m-%d/%H-%M-%S"))
-    date_base.parent.mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(
-        level=logging.INFO,
-        filename=f"{date_base}+{args.job_name}.log",
-    )
+    if args.out_dir:
+        date_base = Path(args.out_dir, args.job_name)
+        date_base.mkdir(parents=True, exist_ok=True)
+        log_file = date_base / "eval.log"
+    else:
+        date_base = Path("experiments/2_libero/logs", dt.datetime.now().strftime("%Y-%m-%d/%H-%M-%S"))
+        date_base.parent.mkdir(parents=True, exist_ok=True)
+        log_file = f"{date_base}+{args.job_name}.log"
+    logging.basicConfig(level=logging.INFO, filename=log_file)
     logging.info(f"Arguments: {json.dumps(dataclasses.asdict(args), indent=4)}")
 
     # Set random seed
@@ -51,7 +57,7 @@ def eval_libero(args: Args) -> None:
     num_tasks_in_suite = task_suite.n_tasks
     logging.info(f"Task suite: {args.task_suite_name}")
 
-    args.video_out_path = f"{date_base}+{args.job_name}"
+    args.video_out_path = str(date_base / "videos") if args.out_dir else f"{date_base}+{args.job_name}"
     pathlib.Path(args.video_out_path).mkdir(parents=True, exist_ok=True)
 
     if args.task_suite_name == "libero_spatial":
@@ -86,7 +92,9 @@ def eval_libero(args: Args) -> None:
 
     # Start evaluation
     total_episodes, total_successes = 0, 0
-    for task_id in tqdm.tqdm(range(num_tasks_in_suite)):
+    task_end = num_tasks_in_suite if args.task_end < 0 else min(args.task_end, num_tasks_in_suite)
+    per_task = []
+    for task_id in tqdm.tqdm(range(args.task_start, task_end)):
         # Get task
         task = task_suite.get_task(task_id)
 
@@ -188,7 +196,7 @@ def eval_libero(args: Args) -> None:
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
             imageio.mimwrite(
-                pathlib.Path(args.video_out_path) / f"rollout_{task_segment}_{suffix}.mp4",
+                pathlib.Path(args.video_out_path) / f"rollout_t{task_id:02d}_ep{episode_idx:02d}_{task_segment}_{suffix}.mp4",
                 [np.asarray(x) for x in replay_images],
                 fps=10,
             )
@@ -201,6 +209,11 @@ def eval_libero(args: Args) -> None:
         # Log final results
         logging.info(f"Current task success rate: {float(task_successes) / float(task_episodes)}")
         logging.info(f"Current total success rate: {float(total_successes) / float(total_episodes)}")
+        per_task.append(dict(task_id=task_id, task=str(task_description), successes=task_successes, episodes=task_episodes))
+        if args.out_dir:  # rewritten after every task, so a crashed client keeps what it finished
+            (date_base / "results.json").write_text(json.dumps(dict(
+                suite=args.task_suite_name, task_start=args.task_start, task_end=task_end, done=task_id == task_end - 1,
+                successes=total_successes, episodes=total_episodes, tasks=per_task), indent=2))
 
     logging.info(f"Total success rate: {float(total_successes) / float(total_episodes)}")
     logging.info(f"Total episodes: {total_episodes}")

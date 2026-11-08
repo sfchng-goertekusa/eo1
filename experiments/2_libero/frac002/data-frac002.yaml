@@ -1,0 +1,30 @@
+# The 40 frac002 demos (one per task), the same demonstrations as the flex-pi, pi0.5 and FOCA one-demo runs;
+# episode indices from frac002_episodes.json (match_episodes.py: 40/40 exact action matches, 6,758 frames).
+# No `root`: the loader then reads $HF_LEROBOT_HOME/<repo_id> (pod_setup.sh downloads there).
+mm_datasets:
+
+lerobot_datasets:
+
+  - repo_id: libero_spatial_no_noops_1.0.0_lerobot
+    episodes: [6, 12, 38, 63, 126, 241, 268, 320, 367, 423]
+    select_video_keys: [observation.images.image, observation.images.wrist_image]
+    select_state_keys: [observation.state]
+    select_action_keys: [action]
+
+  - repo_id: libero_object_no_noops_1.0.0_lerobot
+    episodes: [36, 54, 83, 87, 95, 116, 138, 383, 422, 427]
+    select_video_keys: [observation.images.image, observation.images.wrist_image]
+    select_state_keys: [observation.state]
+    select_action_keys: [action]
+
+  - repo_id: libero_goal_no_noops_1.0.0_lerobot
+    episodes: [75, 110, 143, 186, 193, 204, 252, 265, 286, 373]
+    select_video_keys: [observation.images.image, observation.images.wrist_image]
+    select_state_keys: [observation.state]
+    select_action_keys: [action]
+
+  - repo_id: libero_10_no_noops_1.0.0_lerobot
+    episodes: [35, 101, 108, 149, 175, 228, 236, 265, 272, 304]
+    select_video_keys: [observation.images.image, observation.images.wrist_image]
+    select_state_keys: [observation.state]
+    select_action_keys: [action]

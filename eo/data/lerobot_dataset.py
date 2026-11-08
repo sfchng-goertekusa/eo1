@@ -90,6 +90,12 @@ class LeRobotDataset(BaseLeRobotDataset):
             download_videos=download_videos,
             video_backend=video_backend,
         )
+        # with an episode subset, normalize with the subset's stats (lerobot aggregates them into self.stats),
+        # not the full dataset's meta.stats; the normalizer and the checkpoint's saved stats both read meta.stats
+        if episodes is not None:
+            self.meta.stats = self.stats
+            print(f"* {self.repo_id}: normalization stats from {len(episodes)} selected episodes")
+
         # set weight for the dataset
         self.set_weight(weight)
 
